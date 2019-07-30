@@ -13,6 +13,8 @@
 #import "NSData+GZIP.h"
 #import "NSString+Crypto.h"
 
+#import "AluyunCustomURLProtocol.h"
+
 @implementation LogClient
 
 - (id)initWithApp:(NSString*) endPoint accessKeyID:(NSString *)ak accessKeySecret: (NSString *)as projectName: (NSString *)name serializeType: (AliSLSSerializer) sType {
@@ -55,8 +57,8 @@
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
         // Force to use https api interface
         // Due to the requirement of Apple Security Policy after Jan. 1st, 2017
-        NSString *httpUrl = [NSString stringWithFormat:@"https://%@.%@/logstores/%@/shards/lb",_mProject,_mEndPoint,name];
-        NSData *httpPostBody = [logGroup serialize: _sType];
+        NSString *httpUrl = [NSString stringWithFormat:@"https://%@.%@/logstores/%@/shards/lb",self->_mProject,self->_mEndPoint,name];
+        NSData *httpPostBody = [logGroup serialize: self->_sType];
         NSData *httpPostBodyZipped = [httpPostBody gzippedData];
         
         NSDictionary<NSString*,NSString*>* httpHeaders = [self GetHttpHeadersFrom:name url:httpUrl body:httpPostBody bodyZipped:httpPostBodyZipped];
@@ -119,7 +121,18 @@
         [request setValue:[headers valueForKey:key] forHTTPHeaderField:key];
     }
     
-    NSURLSession *session = [NSURLSession sharedSession];
+    /// @{ M : https 证书
+
+//    NSURLSession *session = [NSURLSession sharedSession];
+    
+    NSURLSessionConfiguration *configuration = [NSURLSessionConfiguration defaultSessionConfiguration];
+    NSArray *protocolArray = @[ [AluyunCustomURLProtocol class] ];
+    configuration.protocolClasses = protocolArray;
+    NSURLSession *session = [NSURLSession sessionWithConfiguration:configuration delegate:nil delegateQueue:[NSOperationQueue mainQueue]];
+    
+    /// chenghonghui @}
+
+
     NSURLSessionDataTask *task = [session dataTaskWithRequest:request completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
         if(response != nil) {
             NSHTTPURLResponse *httpResponse = (NSHTTPURLResponse*)response;
